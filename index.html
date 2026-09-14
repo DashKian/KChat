@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KChat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Firebase (free backend, works from any browser/device) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<style>
+  :root{
+    --bg:#0E1720;
+    --panel:#16212B;
+    --panel-elevated:#1C2A36;
+    --border:#22313D;
+    --accent:#D9A65C;
+    --accent-dim:#8A6A3D;
+    --bubble-out:#2E4A5E;
+    --bubble-in:#1C2A36;
+    --text:#EAEEF2;
+    --muted:#8595A6;
+    --danger:#D9705C;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Vazirmatn','Manrope',sans-serif;
+    overflow:hidden;
+  }
+  #app{height:100vh;width:100%;display:flex;align-items:stretch;justify-content:stretch;}
+
+  /* ---------- Setup screen (shown until Firebase config is filled in) ---------- */
+  .setup-wrap{
+    width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+    background:var(--bg); padding:24px;
+  }
+  .setup-card{
+    max-width:560px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:32px 34px;
+  }
+  .setup-card h2{margin:0 0 6px;font-family:'Manrope',sans-serif;font-size:20px;}
+  .setup-card p{color:var(--muted);font-size:14px;line-height:1.9;}
+  .setup-card code{
+    background:var(--panel-elevated);
+    padding:2px 6px;
+    border-radius:6px;
+    font-size:13px;
+    color:var(--accent);
+  }
+  .setup-card ol{color:var(--text);font-size:14px;line-height:2.1;padding-right:20px;}
+
+  /* ---------- Auth screen ---------- */
+  .auth-wrap{
+    display:flex;
+    width:100%;
+    height:100%;
+    align-items:center;
+    justify-content:center;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(217,166,92,0.10), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(46,74,94,0.35), transparent 45%),
+      var(--bg);
+  }
+  .auth-card{
+    display:flex;
+    width:min(880px, 92vw);
+    height:min(560px, 88vh);
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:20px;
+    overflow:hidden;
+    box-shadow:0 30px 60px rgba(0,0,0,0.45);
+  }
+  .auth-brand{
+    flex:1.1;
+    background:linear-gradient(160deg, #16212B 0%, #0E1720 100%);
+    padding:48px 40px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    border-left:1px solid var(--border);
+  }
+  .k-mark{
+    width:56px;height:56px;
+    border-radius:16px;
+    background:var(--accent);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Manrope',sans-serif;
+    font-weight:800;
+    font-size:28px;
+    color:#0E1720;
+  }
+  .auth-brand h1{
+    font-family:'Manrope',sans-serif;
+    font-size:34px;
+    font-weight:800;
+    margin:28px 0 10px;
+    letter-spacing:-0.5px;
+  }
+  .auth-brand p{
+    color:var(--muted);
+    font-size:15px;
+    line-height:1.8;
+    max-width:320px;
+    margin:0;
+  }
+  .auth-brand .fine{
+    color:var(--accent-dim);
+    font-size:13px;
+    line-height:1.7;
+  }
+  .auth-form{
+    flex:1;
+    padding:48px 44px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:18px;
+  }
+  .auth-form h2{
+    font-family:'Manrope',sans-serif;
+    font-size:22px;
+    font-weight:700;
+    margin:0 0 4px;
+  }
+  .auth-form .sub{color:var(--muted);font-size:14px;margin:0 0 8px;}
+  .field{display:flex;flex-direction:column;gap:6px;}
+  .field label{font-size:13px;color:var(--muted);}
+  .field input{
+    background:var(--panel-elevated);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:12px 14px;
+    border-radius:10px;
+    font-size:15px;
+    font-family:inherit;
+    outline:none;
+    transition:border-color .15s;
+  }
+  .field input:focus{border-color:var(--accent);}
+  .btn-primary{
+    margin-top:8px;
+    background:var(--accent);
+    color:#1a1206;
+    border:none;
+    padding:13px 16px;
+    border-radius:10px;
+    font-size:15px;
+    font-weight:700;
+    font-family:inherit;
+    cursor:pointer;
+    transition:filter .15s, transform .1s;
+  }
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-primary:active{transform:scale(0.98);}
+  .btn-primary:disabled{opacity:0.6;cursor:default;}
+  .switch-line{font-size:13.5px;color:var(--muted);text-align:center;margin-top:4px;}
+  .switch-line a{color:var(--accent);cursor:pointer;text-decoration:none;}
+  .auth-error{
+    background:rgba(217,112,92,0.12);
+    border:1px solid rgba(217,112,92,0.35);
+    color:#F0A796;
+    font-size:13.5px;
+    padding:9px 12px;
+    border-radius:8px;
+  }
+
+  /* ---------- Main chat layout ---------- */
+  .shell{display:flex;width:100%;height:100%;}
+  .sidebar{
+    width:320px;
+    min-width:260px;
+    background:var(--panel);
+    border-left:1px solid var(--border);
+    display:flex;
+    flex-direction:column;
+  }
+  .sidebar-head{
+    padding:18px 18px 14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border-bottom:1px solid var(--border);
+  }
+  .sidebar-head .who{display:flex;align-items:center;gap:10px;}
+  .avatar{
+    width:38px;height:38px;border-radius:50%;
+    background:var(--bubble-out);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:15px;color:var(--text);
+    flex-shrink:0;
+  }
+  .avatar.gold{background:var(--accent);color:#1a1206;}
+  .sidebar-head .name{font-weight:700;font-size:15px;}
+  .sidebar-head .id{font-size:12px;color:var(--muted);}
+  .icon-btn{
+    background:none;border:none;color:var(--muted);
+    cursor:pointer;font-size:18px;padding:6px;border-radius:8px;
+    transition:background .15s,color .15s;
+  }
+  .icon-btn:hover{background:var(--panel-elevated);color:var(--text);}
+  .search-box{padding:12px 16px;}
+  .search-box input{
+    width:100%;
+    background:var(--panel-elevated);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px 14px;
+    border-radius:10px;
+    font-size:14px;
+    font-family:inherit;
+    outline:none;
+  }
+  .search-box input:focus{border-color:var(--accent);}
+  .contact-list{flex:1;overflow-y:auto;padding:4px 8px;}
+  .contact{
+    display:flex;align-items:center;gap:12px;
+    padding:10px 10px;
+    border-radius:12px;
+    cursor:pointer;
+    margin-bottom:2px;
+    transition:background .12s;
+  }
+  .contact:hover{background:var(--panel-elevated);}
+  .contact.active{background:var(--panel-elevated);border:1px solid var(--border);}
+  .contact .meta{flex:1;min-width:0;}
+  .contact .id-line{font-weight:600;font-size:14.5px;}
+  .contact .preview{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
+  .empty-contacts{padding:24px 18px;color:var(--muted);font-size:13.5px;line-height:1.8;text-align:center;}
+
+  .main{flex:1;display:flex;flex-direction:column;background:var(--bg);min-width:0;}
+  .chat-header{
+    padding:16px 22px;
+    border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:12px;
+    background:var(--panel);
+  }
+  .chat-header .name{font-weight:700;font-size:15.5px;}
+  .chat-header .status{font-size:12.5px;color:var(--muted);}
+
+  .messages{
+    flex:1;
+    overflow-y:auto;
+    padding:24px 6% 12px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .bubble-row{display:flex;}
+  .bubble-row.out{justify-content:flex-start;}
+  .bubble-row.in{justify-content:flex-end;}
+  .bubble{
+    max-width:64%;
+    padding:10px 14px;
+    border-radius:16px;
+    font-size:14.5px;
+    line-height:1.6;
+    position:relative;
+  }
+  .bubble .txt{white-space:pre-wrap;word-break:break-word;}
+  .bubble .time{display:block;font-size:10.5px;color:rgba(255,255,255,0.55);margin-top:4px;text-align:left;}
+  .bubble-row.out .bubble{background:var(--bubble-out);border-bottom-left-radius:4px;}
+  .bubble-row.in .bubble{background:var(--bubble-in);border:1px solid var(--border);border-bottom-right-radius:4px;}
+
+  .composer{
+    display:flex;align-items:flex-end;gap:10px;
+    padding:14px 20px;
+    border-top:1px solid var(--border);
+    background:var(--panel);
+  }
+  .composer textarea{
+    flex:1;
+    resize:none;
+    background:var(--panel-elevated);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:14px;
+    padding:12px 14px;
+    font-size:14.5px;
+    font-family:inherit;
+    outline:none;
+    max-height:120px;
+    line-height:1.5;
+  }
+  .composer textarea:focus{border-color:var(--accent);}
+  .send-btn{
+    background:var(--accent);
+    color:#1a1206;
+    border:none;
+    width:42px;height:42px;
+    border-radius:50%;
+    font-size:17px;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+    transition:filter .15s;
+  }
+  .send-btn:hover{filter:brightness(1.1);}
+  .send-btn:disabled{opacity:0.4;cursor:default;}
+
+  .no-chat{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:var(--muted);gap:10px;
+  }
+  .no-chat .k-mark{opacity:0.5;}
+  .no-chat p{font-size:14px;margin:0;}
+
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+
+  @media (max-width:720px){
+    .sidebar{position:absolute;z-index:5;height:100%;width:82vw;transform:translateX(100%);transition:transform .2s;}
+    .sidebar.open{transform:translateX(0);}
+    .auth-brand{display:none;}
+    .auth-card{width:94vw;height:92vh;}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* =========================================================================
+   1) PUT YOUR FIREBASE CONFIG HERE.
+   Get this for free at https://console.firebase.google.com
+   (Create a project → Build → Firestore Database → Create database
+   → then Project settings → General → "Your apps" → Web app → copy config)
+   ========================================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyD4R44lNmvfpE2mqKlvhITwGmO6VlpB_dk",
+  authDomain: "kchat-47c03.firebaseapp.com",
+  projectId: "kchat-47c03",
+  storageBucket: "kchat-47c03.firebasestorage.app",
+  messagingSenderId: "506791187275",
+  appId: "1:506791187275:web:585536b4f30caaad5c8ece"
+};
+/* ========================================================================= */
+
+(function(){
+  const app = document.getElementById('app');
+  const isConfigured = firebaseConfig.apiKey && firebaseConfig.apiKey.indexOf('PASTE_') !== 0;
+
+  let db = null;
+  if(isConfigured){
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+  }
+
+  let state = {
+    screen: isConfigured ? 'auth' : 'setup',
+    authMode: 'login',
+    authError: '',
+    me: null,
+    users: [],
+    activeContact: null,
+    messages: [],
+    mobileSidebarOpen: false
+  };
+
+  let unsubUsers = null;
+  let unsubMessages = null;
+
+  function render(){
+    if(state.screen === 'setup'){ renderSetup(); return; }
+    if(state.screen === 'auth'){ renderAuth(); return; }
+    renderChat();
+  }
+
+  function renderSetup(){
+    app.innerHTML = `
+      <div class="setup-wrap">
+        <div class="setup-card">
+          <h2>یه قدم مونده</h2>
+          <p>برای اینکه KChat روی همه‌ی مرورگرها و دستگاه‌ها کار کنه، به یه پروژه‌ی رایگان Firebase وصل می‌شه. فایل رو باز کن و مقادیر <code>firebaseConfig</code> بالای کد رو با مقادیر پروژه‌ی خودت پر کن.</p>
+          <ol>
+            <li>برو به console.firebase.google.com و یه پروژه بساز.</li>
+            <li>از منو Build → Firestore Database → Create database (در حالت test mode).</li>
+            <li>در Project settings → یه Web App اضافه کن و شیء config رو کپی کن.</li>
+            <li>همون مقادیر رو جای PASTE_... در فایل html بذار و دوباره ذخیره‌اش کن.</li>
+          </ol>
+        </div>
+      </div>
+    `;
+  }
+
+  function simpleHash(str){
+    // Demo-only obfuscation, not real cryptographic security.
+    let h = 0;
+    for(let i=0;i<str.length;i++){
+      h = (Math.imul(31,h) + str.charCodeAt(i)) | 0;
+    }
+    return 'h'+Math.abs(h).toString(36) + str.length;
+  }
+
+  function escapeHtml(s){
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // ---------------- AUTH ----------------
+  function renderAuth(){
+    const isSignup = state.authMode === 'signup';
+    app.innerHTML = `
+      <div class="auth-wrap">
+        <div class="auth-card">
+          <div class="auth-brand">
+            <div>
+              <div class="k-mark">K</div>
+              <h1>KChat</h1>
+              <p>پیام‌رسانی سریع و ساده. برای ساخت اکانت فقط یک شناسه و یک رمز عبور لازم داری — بدون شماره موبایل، بدون ایمیل.</p>
+            </div>
+            <div class="fine">این یک نمونه‌ی نمایشی است. رمزها با یک هش ساده نگه‌داری می‌شوند، نه رمزنگاری امن واقعی.</div>
+          </div>
+          <div class="auth-form">
+            <h2>${isSignup ? 'ساخت اکانت' : 'ورود به KChat'}</h2>
+            <p class="sub">${isSignup ? 'یک شناسه‌ی یکتا و یک رمز انتخاب کن.' : 'شناسه و رمزت را وارد کن.'}</p>
+            ${state.authError ? `<div class="auth-error">${escapeHtml(state.authError)}</div>` : ''}
+            <div class="field">
+              <label>شناسه (ID)</label>
+              <input id="in-id" type="text" placeholder="مثلاً: kian_92" autocomplete="off">
+            </div>
+            <div class="field">
+              <label>رمز عبور</label>
+              <input id="in-pass" type="password" placeholder="رمز عبور">
+            </div>
+            <button class="btn-primary" id="submit-btn">${isSignup ? 'ساخت اکانت' : 'ورود'}</button>
+            <div class="switch-line">
+              ${isSignup ? 'قبلاً اکانت ساختی؟ <a id="switch-link">وارد شو</a>' : 'اکانت نداری؟ <a id="switch-link">بساز</a>'}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById('switch-link').onclick = ()=>{
+      state.authMode = isSignup ? 'login' : 'signup';
+      state.authError = '';
+      render();
+    };
+    document.getElementById('submit-btn').onclick = handleAuthSubmit;
+    document.getElementById('in-pass').addEventListener('keydown', e=>{
+      if(e.key === 'Enter') handleAuthSubmit();
+    });
+  }
+
+  async function handleAuthSubmit(){
+    const id = document.getElementById('in-id').value.trim();
+    const pass = document.getElementById('in-pass').value;
+    state.authError = '';
+
+    if(id.length < 3){
+      state.authError = 'شناسه باید حداقل ۳ کاراکتر باشد.';
+      render(); return;
+    }
+    if(!/^[a-zA-Z0-9_.]+$/.test(id)){
+      state.authError = 'شناسه فقط می‌تواند شامل حروف انگلیسی، عدد، نقطه و آندرلاین باشد.';
+      render(); return;
+    }
+    if(pass.length < 4){
+      state.authError = 'رمز عبور باید حداقل ۴ کاراکتر باشد.';
+      render(); return;
+    }
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = '...';
+
+    const idLower = id.toLowerCase();
+    try{
+      const docRef = db.collection('users').doc(idLower);
+      const snap = await docRef.get();
+      const existing = snap.exists ? snap.data() : null;
+
+      if(state.authMode === 'signup'){
+        if(existing){
+          state.authError = 'این شناسه قبلاً گرفته شده. یکی دیگر امتحان کن.';
+          render(); return;
+        }
+        await docRef.set({ id: id, passHash: simpleHash(pass), createdAt: Date.now() });
+        localStorage.setItem('kchat_session', id);
+        state.me = { id: id };
+        await enterChat();
+      } else {
+        if(!existing || existing.passHash !== simpleHash(pass)){
+          state.authError = 'شناسه یا رمز عبور اشتباه است.';
+          render(); return;
+        }
+        localStorage.setItem('kchat_session', existing.id);
+        state.me = { id: existing.id };
+        await enterChat();
+      }
+    }catch(e){
+      console.error('auth error', e);
+      state.authError = 'مشکلی پیش آمد: ' + (e && e.message ? e.message : String(e));
+      render();
+    }
+  }
+
+  // ---------------- CHAT ----------------
+  function chatId(a,b){
+    return [a.toLowerCase(), b.toLowerCase()].sort().join('__');
+  }
+
+  function initials(id){
+    return id.slice(0,2).toUpperCase();
+  }
+
+  async function enterChat(){
+    state.screen = 'chat';
+    render();
+    watchUsers();
+  }
+
+  function watchUsers(){
+    if(unsubUsers) unsubUsers();
+    unsubUsers = db.collection('users').onSnapshot(snapshot=>{
+      const results = [];
+      snapshot.forEach(doc=>{
+        const data = doc.data();
+        if(data.id.toLowerCase() !== state.me.id.toLowerCase()){
+          results.push({ id: data.id });
+        }
+      });
+      state.users = results;
+      renderContactListOnly();
+    }, err=>{
+      console.error('users watch error', err);
+    });
+  }
+
+  function watchMessages(){
+    if(unsubMessages) unsubMessages();
+    if(!state.activeContact) return;
+    const id = chatId(state.me.id, state.activeContact.id);
+    unsubMessages = db.collection('chats').doc(id).collection('messages')
+      .orderBy('ts', 'asc')
+      .onSnapshot(snapshot=>{
+        state.messages = snapshot.docs.map(d=>d.data());
+        renderMessagesOnly();
+      }, err=>{
+        console.error('messages watch error', err);
+      });
+  }
+
+  function renderChat(){
+    app.innerHTML = `
+      <div class="shell">
+        <div class="sidebar ${state.mobileSidebarOpen ? 'open':''}" id="sidebar">
+          <div class="sidebar-head">
+            <div class="who">
+              <div class="avatar gold">${initials(state.me.id)}</div>
+              <div>
+                <div class="name">${escapeHtml(state.me.id)}</div>
+                <div class="id">شناسه‌ی من</div>
+              </div>
+            </div>
+            <button class="icon-btn" id="logout-btn" title="خروج">⎋</button>
+          </div>
+          <div class="search-box">
+            <input id="search-input" placeholder="جستجوی شناسه...">
+          </div>
+          <div class="contact-list" id="contact-list"></div>
+        </div>
+        <div class="main" id="main-panel"></div>
+      </div>
+    `;
+    document.getElementById('logout-btn').onclick = logout;
+    document.getElementById('search-input').addEventListener('input', renderContactListOnly);
+    renderContactListOnly();
+    renderMainPanel();
+  }
+
+  function renderContactListOnly(){
+    const el = document.getElementById('contact-list');
+    if(!el) return;
+    const q = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
+    const filtered = state.users.filter(u => u.id.toLowerCase().includes(q));
+    if(filtered.length === 0){
+      el.innerHTML = `<div class="empty-contacts">${state.users.length === 0
+        ? 'هنوز کسی اینجا نیست. شناسه‌ات را با یک دوست به اشتراک بگذار تا بتوانید چت کنید.'
+        : 'کسی با این شناسه پیدا نشد.'}</div>`;
+      return;
+    }
+    el.innerHTML = filtered.map(u => `
+      <div class="contact ${state.activeContact && state.activeContact.id === u.id ? 'active':''}" data-id="${escapeHtml(u.id)}">
+        <div class="avatar">${initials(u.id)}</div>
+        <div class="meta">
+          <div class="id-line">${escapeHtml(u.id)}</div>
+          <div class="preview">برای شروع گفتگو کلیک کن</div>
+        </div>
+      </div>
+    `).join('');
+    el.querySelectorAll('.contact').forEach(node=>{
+      node.onclick = ()=>{
+        const id = node.getAttribute('data-id');
+        state.activeContact = { id };
+        state.mobileSidebarOpen = false;
+        document.getElementById('sidebar').classList.remove('open');
+        renderMainPanel();
+        renderContactListOnly();
+        watchMessages();
+      };
+    });
+  }
+
+  function renderMainPanel(){
+    const main = document.getElementById('main-panel');
+    if(!state.activeContact){
+      main.innerHTML = `
+        <div class="no-chat">
+          <div class="k-mark">K</div>
+          <p>یک نفر را برای شروع گفتگو انتخاب کن.</p>
+        </div>
+      `;
+      return;
+    }
+    main.innerHTML = `
+      <div class="chat-header">
+        <div class="avatar">${initials(state.activeContact.id)}</div>
+        <div>
+          <div class="name">${escapeHtml(state.activeContact.id)}</div>
+          <div class="status">آنلاین یا آفلاین بودن نمایش داده نمی‌شود</div>
+        </div>
+      </div>
+      <div class="messages" id="messages"></div>
+      <div class="composer">
+        <textarea id="msg-input" rows="1" placeholder="پیام بنویس..."></textarea>
+        <button class="send-btn" id="send-btn">➤</button>
+      </div>
+    `;
+    renderMessagesOnly();
+    const input = document.getElementById('msg-input');
+    const sendBtn = document.getElementById('send-btn');
+    sendBtn.onclick = sendMessage;
+    input.addEventListener('keydown', e=>{
+      if(e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+    input.addEventListener('input', ()=>{
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+    });
+  }
+
+  function renderMessagesOnly(){
+    const el = document.getElementById('messages');
+    if(!el) return;
+    if(state.messages.length === 0){
+      el.innerHTML = `<div class="no-chat" style="height:100%;"><p>هنوز پیامی رد و بدل نشده. اولین پیام را بفرست.</p></div>`;
+      return;
+    }
+    el.innerHTML = state.messages.map(m=>{
+      const out = m.from.toLowerCase() === state.me.id.toLowerCase();
+      const t = new Date(m.ts);
+      const time = t.getHours().toString().padStart(2,'0') + ':' + t.getMinutes().toString().padStart(2,'0');
+      return `
+        <div class="bubble-row ${out ? 'out':'in'}">
+          <div class="bubble">
+            <span class="txt">${escapeHtml(m.text)}</span>
+            <span class="time">${time}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  async function sendMessage(){
+    const input = document.getElementById('msg-input');
+    const text = input.value.trim();
+    if(!text || !state.activeContact) return;
+    input.value = '';
+    input.style.height = 'auto';
+
+    const id = chatId(state.me.id, state.activeContact.id);
+    try{
+      await db.collection('chats').doc(id).collection('messages').add({
+        from: state.me.id,
+        text: text,
+        ts: Date.now()
+      });
+    }catch(e){
+      console.error('send failed', e);
+    }
+  }
+
+  function logout(){
+    if(unsubUsers) unsubUsers();
+    if(unsubMessages) unsubMessages();
+    localStorage.removeItem('kchat_session');
+    state = { screen:'auth', authMode:'login', authError:'', me:null, users:[], activeContact:null, messages:[] };
+    render();
+  }
+
+  // ---------------- BOOT ----------------
+  async function boot(){
+    if(!isConfigured){
+      render();
+      return;
+    }
+    const savedId = localStorage.getItem('kchat_session');
+    if(savedId){
+      try{
+        const snap = await db.collection('users').doc(savedId.toLowerCase()).get();
+        if(snap.exists){
+          state.me = { id: snap.data().id };
+          await enterChat();
+          return;
+        }
+      }catch(e){
+        console.error('boot error', e);
+      }
+    }
+    state.screen = 'auth';
+    render();
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
